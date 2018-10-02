@@ -1,0 +1,85 @@
+version: '3.4'
+
+### NETWORKS #######################
+networks: 
+  default: 
+    driver: bridge
+    ipam:
+      driver: default
+      config: 
+        - subnet: ${PREFIX_SUBNET:-172.30.0.}${SUBNET:-0/24}
+### VOLUMES ########################
+volumes: 
+  mysql_data:
+
+### SERVICES #######################
+services:
+  ### NGINX ##########################
+  nginx:
+    container_name: ${COMPOSE_PROJECT_NAME:-yii2}_${NGINX_CONTAINER_NAME:-nginx}
+    domainname: ${DOMAIN:-yii2.loc}
+    build:
+      context: ./services/nginx/
+      args: 
+        - NGINX_TAG_VERSION=${NGINX_TAG_VERSION:-latest}
+    volumes:
+      - ${APP:-../src}:/app/
+      - ${NGINX_LOGS_PATH:-./logs/nginx/}:/var/log/nginx/:delegated
+    expose:
+      - ${NGINX_HTTP_PORT:-80}
+      - ${NGINX_HTTPS_PORT:-443}
+    depends_on: 
+      - php
+    networks: 
+      default:
+        ipv4_address: ${PREFIX_SUBNET:-172.30.0}${NGINX_HOST:-21}
+    restart: always
+
+  ### MYSQL ##########################
+  mysql:
+    command: ["mysqld","--character-set-server=${MYSQL_CHARSET:-utf8}","--collation-server=${MYSQL_COLLATION:-utf8_general_ci}"]
+    container_name: ${COMPOSE_PROJECT_NAME:-yii2}_${MYSQL_CONTAINER_NAME:-mysql}
+    build:
+      context: ./services/mysql/
+      args: 
+        - MYSQL_TAG_VERSION=${MYSQL_TAG_VERSION:-5.7.22}
+    volumes:
+      - mysql_data:/var/lib/mysql/
+      - ${MYSQL_DUMP_PATH:-./services/mysql/dumps/}:/docker-entrypoint-initdb.d/
+    environment:
+      - MYSQL_USER=${MYSQL_USER:-root}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-yii2}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-defender}
+      - TZ=${TZ:-Europe/Moscow}
+    expose: 
+      - ${MYSQL_PORT:-3306}
+    networks: 
+      default:
+        ipv4_address: ${PREFIX_SUBNET:-172.30.0}${MYSQL_HOST:-22}
+    restart: always
+
+  ### PHP ############################
+  php:
+    container_name: ${COMPOSE_PROJECT_NAME:-yii2}_${PHP_CONTAINER_NAME:-php}
+    build:
+      context: ./services/php/
+      args: 
+        - PHP_TAG_VERSION=${PHP_TAG_VERSION:-7.2-fpm}
+    environment: 
+      - YII_DEBUG=${YII_DEBUG:-1}
+      - YII_ENV_DEV=${YII_ENV_DEV:-1}
+      - PHP_XDEBUG_ENABLE=${PHP_XDEBUG_ENABLE:-1}
+      - PHP_XDEBUG_IDE_KEY=${PHP_XDEBUG_IDE_KEY:-PHPSTORM}
+      - PHP_XDEBUG_REMOTE_PORT=${PHP_XDEBUG_REMOTE_PORT:-9000}
+      - TZ=${TZ:-Europe/Moscow}
+    volumes: 
+      - ${APP:-../src/}:/app/
+      - ${PHP_LOGS_PATH:-./logs/php/}:/var/log/php/:delegated
+    extra_hosts: 
+      - "host.docker.internal:${HOST_DOCKER_INTERNAL:-172.17.0.1}"
+    expose:
+      - ${PHP_PORT:-9000}
+    networks: 
+      default:
+        ipv4_address: ${PREFIX_SUBNET:-172.30.0}${PHP_HOST:-23}
+    restart: always
