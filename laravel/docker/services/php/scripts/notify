@@ -1,0 +1,52 @@
+#!/bin/bash
+set -e
+
+c_red="\e[0;31m"
+c_green="\e[0;32m"
+c_brown="\e[0;33m"
+c_blue="\e[0;34m"
+c_bold="\033[1m"
+c_reset="\e[0m"
+
+notification_type=$1
+notification_msg=$2
+notification_format=$3
+msg=""
+
+case "${notification_type}" in
+	'taskgrp')
+		msg="${c_bold}${notification_msg}${c_reset}"
+		;;
+	'task')
+		msg="${notification_msg}${c_reset}"
+		;;
+	'inf')
+		msg="${c_green}  * ${notification_msg}${c_reset}"
+		;;
+	'started')
+		msg="${c_green} ${notification_msg}${c_reset}"
+		;;
+	'warn')
+		msg="${c_brown}  * ${notification_msg}${c_reset}"
+		;;
+	'err')
+		msg="${c_red}  * ${notification_msg}${c_reset}"
+		;;
+	'fatal')
+		msg="${c_red}Fatal: ${notification_msg}${c_reset}"
+		;;
+	*)
+		msg=""
+		;;
+esac
+
+case "${notification_format}" in
+	'n')
+		options="-ne"
+	;;
+	*)
+	options="-e"
+		;;
+esac
+
+[[ ! -z "${msg}" ]] && echo $options "${msg}"

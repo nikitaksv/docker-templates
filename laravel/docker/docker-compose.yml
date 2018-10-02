@@ -1,0 +1,106 @@
+version: '3.4'
+
+### NETWORKS #######################
+networks: 
+  default: 
+    driver: bridge
+    ipam:
+      driver: default
+      config: 
+        - subnet: ${PREFIX_SUBNET:-172.29.0.}${SUBNET:-0/24}
+### VOLUMES ########################
+volumes: 
+  mariadb_data:
+
+### SERVICES #######################
+services:
+  ### NGINX ##########################
+  nginx:
+    container_name: ${COMPOSE_PROJECT_NAME:-laravel}_${NGINX_CONTAINER_NAME:-nginx}
+    domainname: ${DOMAIN:-laravel.loc}
+    build:
+      context: ./services/nginx/
+      args: 
+        - NGINX_TAG_VERSION=${NGINX_TAG_VERSION:-1.15.3}
+    volumes:
+      - ${APP:-../}:/var/www/html/
+      - ${NGINX_LOGS_PATH:-./logs/nginx/}:/var/log/nginx/
+    expose:
+      - ${NGINX_HTTP_PORT:-80}
+      - ${NGINX_HTTPS_PORT:-443}
+    depends_on: 
+      - php
+    networks: 
+      default:
+        ipv4_address: ${PREFIX_SUBNET:-172.29.0.}${NGINX_HOST:-21}
+    restart: always
+
+  ### MARIADB ######################
+  mariadb:
+    command: ["mysqld","--character-set-server=${MYSQL_CHARSET:-utf8}","--collation-server=${MYSQL_COLLATION:-utf8_general_ci}"]
+    container_name: ${COMPOSE_PROJECT_NAME:-laravel}_${MARIADB_CONTAINER_NAME:-mariadb}
+    build:
+      context: ./services/mariadb/
+      args: 
+        - MARIADB_TAG_VERSION=${MARIADB_TAG_VERSION:-10.3.9}
+    environment: 
+      - MYSQL_USER=${MYSQL_USER:-root}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-laravel}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-defender}
+      - TZ=${TZ:-Europe/Moscow}
+    volumes: 
+      - mariadb_data:/var/lib/mysql/
+      - ${MARIADB_DUMPS_PATH:-./services/mariadb/dumps/}:/docker-entrypoint-initdb.d/
+    expose: 
+      - ${MARIADB_PORT:-3306}
+    networks: 
+      default:
+        ipv4_address: ${PREFIX_SUBNET:-172.29.0.}${MARIADB_HOST:-22}
+    restart: always
+
+  ### PHP ############################
+  php:
+    container_name: ${COMPOSE_PROJECT_NAME:-laravel}_${PHP_CONTAINER_NAME:-php}
+    build:
+      context: ./services/php/
+      args: 
+        - PHP_TAG_VERSION=${PHP_TAG_VERSION:-7.2.9-fpm}
+    environment: 
+      - APP_ENV=${APP_ENV:-local}
+      - PHP_XDEBUG_IDE_KEY=${PHP_XDEBUG_IDE_KEY:-PHPSTORM}
+      - PHP_XDEBUG_REMOTE_PORT=${PHP_XDEBUG_REMOTE_PORT:-9000}
+      - PHP_DEBUG_ENABLE=${PHP_DEBUG_ENABLE:-1}
+      - TZ=${TZ:-Europe/Moscow}
+    volumes: 
+      - ${APP:-../}:/var/www/html/
+      - ${PHP_LOGS_PATH:-./logs/php/}:/var/log/php/
+    expose:
+      - 9000
+    extra_hosts: 
+      - "host.docker.internal:${HOST_DOCKER_INTERNAL:-172.17.0.1}"
+    networks: 
+      default:
+        ipv4_address: ${PREFIX_SUBNET:-172.29.0.}${PHP_HOST:-23}
+    restart: always
+
+  ### REDIS ##########################
+  redis:
+    container_name: ${COMPOSE_PROJECT_NAME:-laravel}_${REDIS_CONTAINER_NAME:-redis}
+    build:
+      context: ./services/redis/
+      args: 
+        - REDIS_TAG_VERSION=${REDIS_TAG_VERSION:-4.0.9-alpine}
+    networks: 
+      default:
+    restart: always
+
+  ### MEMCACHED #####################
+  memcached:
+    container_name: ${COMPOSE_PROJECT_NAME:-laravel}_${MEMCACHED_CONTAINER_NAME:-memcached}
+    build:
+      context: ./services/memcached/
+      args: 
+        - MEMCACHED_TAG_VERSION=${MEMCACHED_TAG_VERSION:-1.5.9-alpine}
+    networks: 
+      default:
+    restart: always
