@@ -83,3 +83,14 @@ services:
       default:
         ipv4_address: ${PREFIX_SUBNET:-172.30.0.}${PHP_HOST:-23}
     restart: always
+  
+  ### REDIS ##########################
+  redis:
+    container_name: ${COMPOSE_PROJECT_NAME:-yii2}_${REDIS_CONTAINER_NAME:-redis}
+    build:
+      context: ./services/redis/
+      args: 
+        - REDIS_TAG_VERSION=${REDIS_TAG_VERSION:-4.0.9-alpine}
+    networks: 
+      default:
+    restart: always
