@@ -30,6 +30,7 @@ ADD https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.s
 RUN chmod a+x /entrypoint.sh \
     && chmod a+x /bin/wait-for-it
 
+WORKDIR /app
 # For skip warning composer install non-root user....
 ENV COMPOSER_ALLOW_SUPERUSER=1
 ENTRYPOINT [ "/entrypoint.sh" ]
